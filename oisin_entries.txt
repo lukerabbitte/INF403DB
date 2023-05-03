@@ -1,0 +1,28 @@
+bike
+bike-with-roof
+oisinthomasmorrin@gmail.com
+Oisin Thomas Morrin
+password420
+paypal
+bike-with-roof
+0.55
+1.45
+1.55
+69
+2023-05-03 15:20:30
+2023-05-03 15:30:30
+Carl Vogel
+repair
+Fixed leaky roof
+Grenoble
+parking
+oisinthomasmorrin@gmail.com
+2023-05-03 15:30:30
+2023-05-03 15:40:30
+69
+disabled
+45.179600
+5.705660
+45.194260
+5.731670
+5.69

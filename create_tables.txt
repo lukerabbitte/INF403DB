@@ -1,0 +1,100 @@
+/*
+   asset_id represents an individual bike or scooter, asset_type determines if it is a bike or scooter, asset_model
+   represents the exact type of bike or scooter (company may use multiple models)
+*/
+CREATE TABLE Assets (
+    asset_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    asset_type VARCHAR(7) NOT NULL,
+    asset_model VARCHAR(16) NOT NULL,
+    CONSTRAINT ck_assets_c1 CHECK (asset_type IN ('bike', 'scooter')),
+    CONSTRAINT ck_assets_c2 CHECK (asset_id >= 0)
+);
+
+/*
+    Contains authentication information for the user, email is unique and is used as an ID, password stored as a bcrypt
+    hash, not in plain text
+*/
+CREATE TABLE Riders (
+    rider_email VARCHAR(254),
+    rider_name VARCHAR(50) NOT NULL,
+    rider_password VARCHAR(60) NOT NULL,
+    rider_payment_method VARCHAR(13) NOT NULL,
+    rider_created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    rider_last_sign_in DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_riders_c0 PRIMARY KEY (rider_email),
+    CONSTRAINT ck_riders_c1 CHECK (rider_email LIKE '%_@__%.__%'),
+    CONSTRAINT ck_riders_c2 CHECK (rider_payment_method IN (
+            'debit_card', 'credit_card','bank_transfer', 'paypal'
+        )
+    )
+);
+
+/*
+    Represents how much a particular bike/scooter (by model) is to use, as the cost of maintenance and kms per charge
+    will vary, allows for 3 ways to charge the user
+*/
+CREATE TABLE Pricing (
+    asset_model VARCHAR(16) NOT NULL,
+    unlock_price DECIMAL(2, 10) NOT NULL,
+    minute_price DECIMAL(2, 10) NOT NULL,
+    kilometer_price DECIMAL(2, 10) NOT NULL,
+    CONSTRAINT pk_pricing_c0 PRIMARY KEY (asset_model),
+    CONSTRAINT fk_pricing_c1 FOREIGN KEY (asset_model) REFERENCES Assets(asset_model),
+    CONSTRAINT ck_pricing_c2 CHECK ( unlock_price >= 0 ),
+    CONSTRAINT ck_pricing_c3 CHECK ( minute_price >= 0 ),
+    CONSTRAINT ck_pricing_c4 CHECK ( kilometer_price >= 0 )
+);
+
+/*
+    Represents an intervention made by a member of staff to either replace the battery, repair the vehicle or move it
+    to a more suitable place, including the ability to note what changes were made to the vehicle / parts replaced.
+*/
+CREATE TABLE MaintenanceActivity (
+    asset_id INTEGER,
+    maintenance_start_time DATETIME NOT NULL,
+    maintenance_end_time DATETIME NOT NULL,
+    maintenance_technician VARCHAR(50) NOT NULL,
+    maintenance_type VARCHAR(7) NOT NULL,
+    maintenance_notes VARCHAR(256),
+    CONSTRAINT pk_maintenance_activity_c0 PRIMARY KEY (asset_id, maintenance_start_time),
+    CONSTRAINT fk_maintenance_activity_c1 FOREIGN KEY (asset_id) REFERENCES Assets(asset_id),
+    CONSTRAINT ck_maintenance_activity_c2 CHECK (maintenance_type IN ('repair', 'charge', 'move'))
+);
+
+/*
+    Represents different zones, either low speed, a parking zone or a zone where the accelerator is disabled.
+*/
+CREATE TABLE Zones (
+    zone_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    zone_jurisdiction VARCHAR(50),
+    zone_type VARCHAR(8),
+    CONSTRAINT ck_zones_c1 CHECK (zone_type in ('parking', 'slow', 'disabled')),
+    CONSTRAINT ck_zones_c2 CHECK (zone_id >= 0)
+);
+
+/*
+    Represents an individual journey made by a rider, including where the vehicle started, finished and when the journey
+    was made as well as how far they rode for billing purposes, end_zone represents the parking zone, if not present
+    then the user should be fined for not parking in a valid place.
+*/
+CREATE TABLE Journeys (
+    rider_email VARCHAR(254),
+    journey_start_time DATETIME NOT NULL,
+    journey_end_time DATETIME NOT NULL,
+    asset_id INTEGER NOT NULL,
+    journey_arrival_zone INTEGER, /* If it's null or not parking we know to fine the user for not using a parking space*/
+    journey_start_long REAL NOT NULL,
+    journey_start_lat REAL NOT NULL,
+    journey_end_long REAL NOT NULL,
+    journey_end_lat REAL NOT NULL,
+    journey_distance_travelled DECIMAL(10,2),
+    CONSTRAINT pk_journeys_c0 PRIMARY KEY (rider_email, journey_start_time),
+    CONSTRAINT fk_journeys_c1 FOREIGN KEY (rider_email) REFERENCES Riders(rider_email),
+    CONSTRAINT fk_journeys_c2 FOREIGN KEY (asset_id) REFERENCES Assets(asset_id),
+    CONSTRAINT fk_journeys_c3 FOREIGN KEY (journey_arrival_zone) REFERENCES Zones(zone_id),
+    CONSTRAINT ck_journeys_c4 CHECK (journey_start_long >= -180 AND journey_start_long <= 180),
+    CONSTRAINT ck_journeys_c5 CHECK (journey_start_lat >= -90 AND journey_start_lat < 90),
+    CONSTRAINT ck_journeys_c6 CHECK (journey_end_long >= -180 AND journey_end_long <= 180),
+    CONSTRAINT ck_journeys_c7 CHECK (journey_end_lat >= -180 AND journey_end_lat <= 180),
+    CONSTRAINT ck_journeys_c8 CHECK (journey_distance_travelled > 0)
+);
